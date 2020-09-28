@@ -1,0 +1,81 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.datasets import fetch_openml
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import precision_score, recall_score, accuracy_score
+from PIL import Image,ImageOps
+from tensorflow.keras.models import load_model
+import joblib
+
+import tensorflow as tf
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Conv2D, Flatten
+from tensorflow.keras.datasets import mnist
+from tensorflow.keras.utils import to_categorical
+
+(X_train, y_train), (X_test, y_test) = mnist.load_data()
+X_train = X_train.reshape(60000, 28, 28, 1)
+X_test = X_test.reshape(10000, 28, 28, 1)
+
+import pygame
+from pygame.locals import QUIT, K_RETURN
+from tkinter import messagebox, Tk
+
+root=Tk()
+root.withdraw()
+
+WIDTH = 300
+HEIGHT = 300
+CIRCLE = 30
+RADIUS = CIRCLE // 2
+BLACK = (0, 0, 0)
+WHITE = (255, 255, 255)
+
+
+def setup(window):
+    window.fill(WHITE)
+    pygame.display.update()
+
+
+def predict_image(window):
+    rect = pygame.Rect(0, 0, WIDTH, HEIGHT)
+    sub = window.subsurface(rect)
+    pygame.image.save(sub, "test.png")
+
+    # Main Model Prediction
+    modelloaded = load_model('DigiNNModel.h5')      
+    img = Image.open('test.png')
+    img_small = img.resize((28, 28)) 
+    img_gray = ImageOps.grayscale(img_small)
+    img_gray = ImageOps.invert(img_gray)
+    img_gray_arr = np.array(img_gray).reshape(1,28,28,1)    #Final Image As Array
+    prediction = np.argmax(modelloaded.predict(img_gray_arr), axis=1)   # Convert the model's output probability to the number prediction (number 0-9)
+    confidence = modelloaded.predict(img_gray_arr).reshape(10,)[prediction]    #Model's confidence (probability) for the prediction
+    messagebox.showinfo("", message=f"The drawn image is most likely a {(prediction[0])} \nConfidence: {(confidence[0])}")  #Show the prediction and probability
+
+
+pygame.init()
+win = pygame.display.set_mode((WIDTH, HEIGHT))
+setup(win)
+
+run = True
+while run:
+    for event in pygame.event.get():
+        if event.type == QUIT:
+            run = False
+
+    mouse = pygame.mouse.get_pressed()
+    if any(mouse):
+        x, y = pygame.mouse.get_pos()
+        if mouse[0]:
+            pygame.draw.circle(win, BLACK, (x, y), RADIUS)
+            pygame.display.update()
+        elif any(mouse[1:]):
+            setup(win)
+
+    if pygame.key.get_pressed()[K_RETURN]:
+            predict_image(win)
+
+pygame.quit()
+root.mainloop()
